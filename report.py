@@ -1,0 +1,111 @@
+"""report.py — Renders the final agent outputs into a single styled HTML report."""
+import html as html_lib
+
+
+def _img(b64, caption):
+    if not b64:
+        return ""
+    return f"""
+    <div class="plot">
+      <img src="data:image/png;base64,{b64}" />
+      <p class="caption">{html_lib.escape(caption)}</p>
+    </div>"""
+
+
+def _table(rows: list[dict]) -> str:
+    if not rows:
+        return "<p><em>No data.</em></p>"
+    cols = list(rows[0].keys())
+    head = "".join(f"<th>{html_lib.escape(str(c))}</th>" for c in cols)
+    body = ""
+    for r in rows:
+        body += "<tr>" + "".join(f"<td>{html_lib.escape(str(r.get(c, '')))}</td>" for c in cols) + "</tr>"
+    return f"<table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>"
+
+
+def _agent_trace(agents: list) -> str:
+    items = ""
+    for a in agents:
+        steps = "".join(f"<li>{html_lib.escape(s)}</li>" for s in a.trace)
+        items += f"<div class='agent-block'><h4>{html_lib.escape(a.name)}</h4><ul>{steps}</ul></div>"
+    return items
+
+
+def build_html_report(ctx: dict) -> str:
+    profile = ctx["profile"]
+    target = ctx.get("target")
+    clean_log = ctx["clean_log"]
+    eda = ctx["eda"]
+    model = ctx.get("model")
+    agents = ctx["agents"]
+    instruction = ctx.get("instruction", "")
+
+    col_rows = [{
+        "column": c["name"], "dtype": c["dtype"], "kind": c["kind"],
+        "% missing": c["pct_missing"], "unique": c["n_unique"],
+    } for c in profile["columns"]]
+
+    model_section = ""
+    if model:
+        model_rows = model["results"]
+        model_section = f"""
+        <h2>5. Model Selection, Training &amp; Evaluation</h2>
+        <p>Task type: <b>{html_lib.escape(model['task'])}</b> &nbsp;|&nbsp;
+           Train rows: {model['n_train']} &nbsp;|&nbsp; Test rows: {model['n_test']} &nbsp;|&nbsp;
+           Features used: {model['n_features_in']}</p>
+        <p>Best performing model: <b>{html_lib.escape(model['best_model'])}</b></p>
+        {_table(model_rows)}
+        {_img(model.get('confusion_matrix_plot'), 'Confusion matrix — best model')}
+        """
+
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>Agentic Data Science Report</title>
+<style>
+  body {{ font-family: 'Source Serif 4', Georgia, serif; max-width: 980px; margin: 40px auto; padding: 0 20px; color: #1a1a1a; line-height: 1.55; }}
+  h1 {{ font-family: 'Playfair Display', Georgia, serif; color: #b03a2e; border-bottom: 3px solid #b03a2e; padding-bottom: 10px; }}
+  h2 {{ font-family: 'Playfair Display', Georgia, serif; color: #1a4b8c; margin-top: 40px; border-left: 5px solid #1a4b8c; padding-left: 10px; }}
+  h4 {{ color: #b03a2e; margin-bottom: 4px; }}
+  table {{ border-collapse: collapse; width: 100%; margin: 14px 0; font-size: 14px; }}
+  th, td {{ border: 1px solid #ddd; padding: 6px 10px; text-align: left; }}
+  th {{ background: #1a4b8c; color: white; }}
+  tr:nth-child(even) {{ background: #f7f7f7; }}
+  .plot {{ margin: 18px 0; text-align: center; }}
+  .plot img {{ max-width: 100%; border: 1px solid #eee; border-radius: 6px; }}
+  .caption {{ font-size: 13px; color: #666; font-style: italic; }}
+  .agent-block {{ background: #fafafa; border-left: 3px solid #b03a2e; padding: 8px 14px; margin: 10px 0; border-radius: 4px; }}
+  .agent-block ul {{ margin: 4px 0; padding-left: 20px; font-size: 13.5px; color: #333; }}
+  .instruction {{ background: #fff8f0; border: 1px solid #e8c9a0; padding: 10px 14px; border-radius: 6px; font-style: italic; }}
+  .badge {{ display:inline-block; background:#1a4b8c; color:white; border-radius:4px; padding:2px 8px; font-size:12px; margin-right:6px;}}
+</style></head>
+<body>
+<h1>Agentic AI Data Science Report</h1>
+<p class="instruction"><b>Instruction given:</b> {html_lib.escape(instruction) if instruction else '(none — default full pipeline)'}</p>
+
+<h2>1. Dataset Understanding</h2>
+<p>{profile['n_rows']} rows, {profile['n_cols']} columns, {profile['n_duplicate_rows']} duplicate rows detected.
+Target column: <b>{html_lib.escape(target) if target else 'None (unsupervised/EDA mode)'}</b></p>
+{_table(col_rows)}
+
+<h2>2. Data Cleaning</h2>
+<ul>{"".join(f"<li>{html_lib.escape(l)}</li>" for l in clean_log)}</ul>
+
+<h2>3. Exploratory Data Analysis</h2>
+{_img(eda['plots'].get('missingness'), 'Missing values by column')}
+{_img(eda['plots'].get('correlation_heatmap'), 'Correlation heatmap (numeric features)')}
+{_img(eda['plots'].get('distributions'), 'Distributions of numeric features')}
+{_img(eda['plots'].get('target_relationship'), 'Feature relationships with target')}
+<ul>{"".join(f"<li>{html_lib.escape(i)}</li>" for i in eda['insights'])}</ul>
+
+<h2>4. Feature Engineering</h2>
+<p>See agent trace below for details on engineered features.</p>
+
+{model_section}
+
+<h2>6. Agent Execution Trace</h2>
+<p>Full step-by-step log of what each agent decided and did:</p>
+{_agent_trace(agents)}
+
+<hr style="margin-top:50px;border:none;border-top:1px solid #ddd;">
+<p style="color:#999;font-size:12px;">Generated by the Agentic AI Data Scientist system — developed by Sehrab Showket Shah.</p>
+</body></html>"""
