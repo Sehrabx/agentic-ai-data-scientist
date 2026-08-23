@@ -131,4 +131,4 @@ have real work to do.
   the `context` dict passed to `ReportAgent` already has everything needed.
 
 ## Developed by
-Sehrab Showket Shah
+Sehrab Showkat Shah
