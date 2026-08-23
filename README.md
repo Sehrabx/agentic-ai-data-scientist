@@ -6,6 +6,12 @@ LLM reasoning with deterministic Python/ML tools rather than relying on
 generated text for anything numeric. Once trained, the model is saved and
 can predict on brand-new records through a web UI or CLI.
 
+## Screenshots
+
+![Landing page](screenshots/landing.png)
+![Results and agent trace](screenshots/result.png)
+![Live prediction](screenshots/predict.png)
+
 ## Architecture
 
 ```
