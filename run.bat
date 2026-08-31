@@ -14,4 +14,4 @@ if exist "venv\Scripts\activate.bat" (
     streamlit run app.py
 )
 
-pause
+pause 
