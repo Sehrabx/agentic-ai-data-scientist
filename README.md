@@ -1,4 +1,4 @@
- # Agentic AI Data Scientist
+# Agentic AI Data Scientist
 
 An agentic system that automates the major stages of a data science workflow
 from a natural-language instruction and an uploaded dataset — combining
